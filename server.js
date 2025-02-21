@@ -1,4 +1,5 @@
-require("dotenv").config();
+require("dotenv").config(); // Only needed for local development
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -8,34 +9,30 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URI;
 
-// ✅ MongoDB Connection (Optional)
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+if (!MONGO_URI) {
+    console.error("❌ MONGO_URI is not set! Exiting...");
+    process.exit(1); // Stop the server if MongoDB URI is missing
+}
+
+// ✅ MongoDB Connection
+mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log("✅ MongoDB Connected"))
-    .catch(err => console.error("❌ MongoDB Error:", err)); 
+    .catch(err => console.error("❌ MongoDB Error:", err));
 
-// ✅ Schema for Storing Last Command
-const commandSchema = new mongoose.Schema({
-    command: { type: String, required: true, default: "OFF" }
-});
-const Command = mongoose.model("Command", commandSchema);
-
-// ✅ API for ESP8266 to Fetch Command
+// ✅ API for ESP8266
 app.get("/command", async (req, res) => {
     const lastCommand = await Command.findOne() || { command: "OFF" };
     res.json({ command: lastCommand.command });
 });
 
-// ✅ API to Send Command from Frontend
 app.post("/command", async (req, res) => {
     const { command } = req.body;
-    
-    if (command !== "ON" && command !== "OFF") {
+    if (!["ON", "OFF"].includes(command)) {
         return res.status(400).json({ error: "Invalid command" });
     }
-
     await Command.findOneAndUpdate({}, { command }, { upsert: true });
-
     console.log(`📤 New Command: ${command}`);
     res.json({ success: true, command });
 });
