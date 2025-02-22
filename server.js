@@ -16,12 +16,15 @@ if (!MONGO_URI) {
     process.exit(1);
 }
 
-// ✅ MongoDB Connection
+// ✅ MongoDB Connection with Auto-Reconnect
 mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected"))
-    .catch(err => {
-        console.error("❌ MongoDB Connection Error:", err);
-    });
+    .catch(err => console.error("❌ MongoDB Connection Error:", err));
+
+mongoose.connection.on("disconnected", () => {
+    console.error("❌ MongoDB Disconnected! Reconnecting...");
+    mongoose.connect(MONGO_URI);
+});
 
 // ✅ Define Command Model
 const commandSchema = new mongoose.Schema({
@@ -29,14 +32,12 @@ const commandSchema = new mongoose.Schema({
 });
 const Command = mongoose.model("Command", commandSchema);
 
-// ✅ API Endpoints
-
-// Health check route (to prevent Railway from stopping container)
+// ✅ Health Check (Prevents Railway from Stopping the Container)
 app.get("/health", (req, res) => {
     res.status(200).send("OK");
 });
 
-// Get the last command (default: "OFF")
+// ✅ API Endpoints
 app.get("/command", async (req, res) => {
     try {
         const lastCommand = await Command.findOne() || { command: "OFF" };
@@ -46,7 +47,6 @@ app.get("/command", async (req, res) => {
     }
 });
 
-// Update command (only "ON" or "OFF" allowed)
 app.post("/command", async (req, res) => {
     try {
         const { command } = req.body;
@@ -61,10 +61,24 @@ app.post("/command", async (req, res) => {
     }
 });
 
-// Root Route
+// ✅ Root Route
 app.get("/", (req, res) => {
     res.send("🚀 ESP Backend Server is Running!");
 });
 
-// ✅ Start Server (binds to 0.0.0.0 for Railway)
-app.listen(PORT, "0.0.0.0", () => console.log(`✅ Server running on port ${PORT}`));
+// ✅ Prevent Railway from Stopping the App
+setInterval(() => {
+    console.log("✅ Keeping app alive...");
+}, 10000); // Logs every 10 seconds to prevent Railway shutdown
+
+// ✅ Handle Unexpected Errors to Prevent Crashes
+process.on("uncaughtException", (err) => {
+    console.error("🔥 Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("🔥 Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+// ✅ Start Server (Uses Correct Port)
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
