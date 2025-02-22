@@ -3,6 +3,7 @@ require("dotenv").config(); // Load environment variables
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const http = require("http");
 
 const app = express();
 app.use(cors());
@@ -37,6 +38,12 @@ app.get("/health", (req, res) => {
     res.status(200).send("OK");
 });
 
+// ✅ Log All Requests (Debugging)
+app.use((req, res, next) => {
+    console.log(`📥 Incoming request: ${req.method} ${req.url}`);
+    next();
+});
+
 // ✅ API Endpoints
 app.get("/command", async (req, res) => {
     try {
@@ -66,10 +73,20 @@ app.get("/", (req, res) => {
     res.send("🚀 ESP Backend Server is Running!");
 });
 
-// ✅ Prevent Railway from Stopping the App
+// ✅ Keep App Alive by Pinging Itself Every 5s
 setInterval(() => {
-    console.log("✅ Keeping app alive...");
-}, 10000); // Logs every 10 seconds to prevent Railway shutdown
+    http.get("https://esphomebackend-production.up.railway.app/health", (res) => {
+        console.log(`✅ Keep-alive ping: ${res.statusCode}`);
+    }).on("error", (err) => {
+        console.error("❌ Keep-alive error:", err);
+    });
+}, 5000);
+
+// ✅ Handle SIGTERM Gracefully (Prevents Railway from Stopping)
+process.on("SIGTERM", () => {
+    console.log("🛑 SIGTERM received! Cleaning up...");
+    process.exit(0);
+});
 
 // ✅ Handle Unexpected Errors to Prevent Crashes
 process.on("uncaughtException", (err) => {
