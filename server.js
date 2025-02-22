@@ -1,4 +1,4 @@
-require("dotenv").config(); // Load environment variables (only needed locally)
+require("dotenv").config(); // Load environment variables
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -11,7 +11,6 @@ app.use(express.json());
 const PORT = process.env.PORT || 8080;
 const MONGO_URI = process.env.MONGO_URI;
 
-// ❌ Exit if MongoDB URI is missing
 if (!MONGO_URI) {
     console.error("❌ MONGO_URI is not set! Exiting...");
     process.exit(1);
@@ -22,7 +21,6 @@ mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB Connected"))
     .catch(err => {
         console.error("❌ MongoDB Connection Error:", err);
-        process.exit(1); // Exit if MongoDB connection fails
     });
 
 // ✅ Define Command Model
@@ -68,5 +66,5 @@ app.get("/", (req, res) => {
     res.send("🚀 ESP Backend Server is Running!");
 });
 
-// ✅ Start Server
+// ✅ Start Server (binds to 0.0.0.0 for Railway)
 app.listen(PORT, "0.0.0.0", () => console.log(`✅ Server running on port ${PORT}`));
