@@ -4,6 +4,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
+const https = require("https"); // ✅ Import HTTPS module
 
 const app = express();
 app.use(cors());
@@ -75,7 +76,7 @@ app.get("/", (req, res) => {
 
 // ✅ Keep App Alive by Pinging Itself Every 5s
 setInterval(() => {
-    http.get("https://esphomebackend-production.up.railway.app/health", (res) => {
+    https.get("https://esphomebackend-production.up.railway.app/health", (res) => { // ✅ Use HTTPS
         console.log(`✅ Keep-alive ping: ${res.statusCode}`);
     }).on("error", (err) => {
         console.error("❌ Keep-alive error:", err);
