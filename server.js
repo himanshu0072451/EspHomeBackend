@@ -1,4 +1,4 @@
-require("dotenv").config(); // Only needed for local development
+require("dotenv").config(); // Load environment variables (only needed locally)
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -11,36 +11,57 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
+// ❌ Exit if MongoDB URI is missing
 if (!MONGO_URI) {
     console.error("❌ MONGO_URI is not set! Exiting...");
-    process.exit(1); // Stop the server if MongoDB URI is missing
+    process.exit(1);
 }
 
 // ✅ MongoDB Connection
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log("✅ MongoDB Connected"))
-    .catch(err => console.error("❌ MongoDB Error:", err));
+    .catch(err => {
+        console.error("❌ MongoDB Connection Error:", err);
+        process.exit(1); // Exit if MongoDB connection fails
+    });
 
-// ✅ API for ESP8266
+// ✅ Define Command Model
+const commandSchema = new mongoose.Schema({
+    command: { type: String, enum: ["ON", "OFF"], default: "OFF" }
+});
+const Command = mongoose.model("Command", commandSchema);
+
+// ✅ API Endpoints
+
+// Get the last command (default: "OFF")
 app.get("/command", async (req, res) => {
-    const lastCommand = await Command.findOne() || { command: "OFF" };
-    res.json({ command: lastCommand.command });
-});
-
-app.post("/command", async (req, res) => {
-    const { command } = req.body;
-    if (!["ON", "OFF"].includes(command)) {
-        return res.status(400).json({ error: "Invalid command" });
+    try {
+        const lastCommand = await Command.findOne() || { command: "OFF" };
+        res.json({ command: lastCommand.command });
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
     }
-    await Command.findOneAndUpdate({}, { command }, { upsert: true });
-    console.log(`📤 New Command: ${command}`);
-    res.json({ success: true, command });
 });
 
-// ✅ Root Route
+// Update command (only "ON" or "OFF" allowed)
+app.post("/command", async (req, res) => {
+    try {
+        const { command } = req.body;
+        if (!["ON", "OFF"].includes(command)) {
+            return res.status(400).json({ error: "Invalid command" });
+        }
+        await Command.findOneAndUpdate({}, { command }, { upsert: true });
+        console.log(`📤 New Command: ${command}`);
+        res.json({ success: true, command });
+    } catch (error) {
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+});
+
+// Root Route
 app.get("/", (req, res) => {
     res.send("🚀 ESP Backend Server is Running!");
 });
 
 // ✅ Start Server
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => console.log(`✅ Server running on port ${PORT}`));
